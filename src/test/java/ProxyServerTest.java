@@ -1,8 +1,8 @@
+import io.restassured.path.json.JsonPath;
 import net.lightbody.bmp.BrowserMobProxy;
 import net.lightbody.bmp.BrowserMobProxyServer;
 import net.lightbody.bmp.client.ClientUtil;
 import net.lightbody.bmp.core.har.Har;
-import net.lightbody.bmp.core.har.HarEntry;
 import org.junit.Test;
 import org.openqa.selenium.Proxy;
 import org.openqa.selenium.WebDriver;
@@ -16,11 +16,10 @@ import java.util.concurrent.TimeUnit;
 public class ProxyServerTest {
 
     @Test
-    public void testMobProxyServer() {
+    public void testMobProxyServer() throws InterruptedException {
 
         BrowserMobProxy proxy = new BrowserMobProxyServer();
         proxy.start();
-        int port = proxy.getPort();
 
         proxy.addRequestFilter((request, contents, messageInfo) -> {
             System.out.println("--> --> --> --> --> --> --> --> --> --> --> --> --> --> --> -->");
@@ -29,7 +28,15 @@ public class ProxyServerTest {
             System.out.println("Request uri: " + request.getUri());
             System.out.println("ChannelHandlerContext: " + messageInfo.getChannelHandlerContext().name());
             System.out.println("Content type: " + contents.getContentType());
-            System.out.println("Content text: " + contents.getTextContents());
+
+            if (request.getUri().contains("Automation")) {
+                String original = request.getUri();
+                String changed = original.replaceAll("Automation", "Bla-Bla-Bla");
+                request.setUri(changed);
+            }
+
+            JsonPath content = JsonPath.given(contents.getTextContents());
+            System.out.println("Content is:\n" + content.prettyPrint());
 
             return null;
         });
@@ -40,8 +47,13 @@ public class ProxyServerTest {
             System.out.println("Response status: " + response.getStatus());
             System.out.println("ChannelHandlerContext: " + messageInfo.getChannelHandlerContext().name());
             System.out.println("Content type: " + contents.getContentType());
-            if (!contents.getContentType().contains("image"))
-                System.out.println("Content text: " + contents.getTextContents());
+
+            //contents.setTextContents("I am trying to manipulate with response text))");
+
+            if (!contents.getContentType().contains("image")) {
+                JsonPath content = JsonPath.given(contents.getTextContents());
+                System.out.println("Content text:\n" + content.prettyPrint());
+            }
         });
 
         Proxy seleniumProxy = ClientUtil.createSeleniumProxy(proxy);
@@ -53,6 +65,8 @@ public class ProxyServerTest {
         WebDriver driver = new ChromeDriver(options);
         driver.manage().window().maximize();
         driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
+
+        //proxy.enableHarCaptureTypes(CaptureType.RESPONSE_CONTENT, CaptureType.REQUEST_CONTENT);
 
         proxy.newHar("googleStartPage");
 
@@ -67,14 +81,7 @@ public class ProxyServerTest {
         Utils.writeHarToFile(har, "search");
 
 
-        System.out.println("Proxy started at port: " + port);
-        for (HarEntry entry : har.getLog().getEntries()) {
-            System.out.println("Request URL: " + entry.getRequest().getUrl());
-            System.out.println("Server response in: " + entry.getTimings().getWait());
-            System.out.println("Response status: " + entry.getResponse().getStatus());
-        }
-
-
+        Thread.sleep(2000);
         driver.quit();
         proxy.stop();
     }
