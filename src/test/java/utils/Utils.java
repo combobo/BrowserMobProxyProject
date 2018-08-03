@@ -7,21 +7,18 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 
 public class Utils {
-    public static void writeHarToFile(Har har){
+    public static void writeHarToFile(Har har, String fileName) {
         try {
-            File file = new File("target\\Test.har");
+            File file = new File("target\\" + fileName + ".har");
             FileOutputStream fileOutputStream = new FileOutputStream(file);
             try {
                 har.writeTo(fileOutputStream);
-            }
-            catch (IOException e) {
+            } catch (IOException e) {
                 System.out.println(e.getMessage());
-            }
-            finally {
+            } finally {
                 fileOutputStream.close();
             }
-        }
-        catch (IOException e){
+        } catch (IOException e) {
             System.out.println(e.getMessage());
         }
     }
